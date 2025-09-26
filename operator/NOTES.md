@@ -9,3 +9,22 @@ Finalizer:
 Owner Reference: 
 Webhook:
 RBAC:
+
+
+Files added after adding api
+
+api/v1
+|- groupversion_info.go -- contains group version info
+|- org_types.go         -- contain CR structure eg : Org, OrgList, OrgSpec & OrgStatus
+|- zz_deepcopy.go       -- contain auto_generated code ie deepCopy methods needed for k8s.  updated only by make generate command
+
+internal/controller
+|- org_controller.go    -- container reconsiler logic. 
+    -- basically it will reconciler struct with following methods
+    -- Reconciler struct
+    --  |- Reconcile() : WHERE IT HAVING CALL???
+    --  |- SetupWithManager() : called in main function to setup it
+
+config/crd
+|- kustomization.yanl -- this include path of actual crd.yaml  [but we havent crd.yaml yet. we will create it in next steps]
+
