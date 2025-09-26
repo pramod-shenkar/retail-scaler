@@ -1,0 +1,85 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-svc
+spec:
+  type: ClusterIP
+  ports:
+    - name: kafka
+      port: 9092
+      targetPort: 9092
+    - name: controller
+      port: 9093
+      targetPort: 9093
+  selector:
+    app: kafka-app
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka-app
+  template:
+    metadata:
+      labels:
+        app: kafka-app
+    spec:
+      containers:
+      - name: kafka
+        image: confluentinc/cp-kafka:7.4.0
+        ports:
+        - containerPort: 9092   # PLAINTEXT listener
+        - containerPort: 9093   # CONTROLLER listener
+        env:
+        # Broker identity & cluster config
+        - name: KAFKA_BROKER_ID
+          value: "1"
+        - name: KAFKA_NODE_ID
+          value: "1"
+        - name: CLUSTER_ID
+          value: "MkU3OEVBNTcwNTJENDM2Qk"
+
+        # Listeners & networking
+        - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
+          value: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT"
+            # Maps logical listener names (PLAINTEXT, CONTROLLER) to security protocols.
+            # PLAINTEXT → unencrypted, for broker<->broker and/or internal traffic.
+            # CONTROLLER → special listener used by the controller quorum in KRaft.
+            # Now value can be : PLAINTEXT, SSL, SASL_PLAINTEXT, SASL_SSL
+            # quorum = group of controller nodes i.e., that manages metadata
+        - name: KAFKA_ADVERTISED_LISTENERS
+          value: "PLAINTEXT://kafka-svc.default.svc.cluster.local:9092"
+        - name: KAFKA_LISTENERS
+          value: "PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093"
+
+        # Broker & quorum
+        - name: KAFKA_PROCESS_ROLES
+          value: "broker,controller"
+            # In KRaft mode, a node can act as both broker (handles topics, partitions) and controller (cluster metadata manager).
+        - name: KAFKA_CONTROLLER_LISTENER_NAMES
+          value: "CONTROLLER"
+        - name: KAFKA_CONTROLLER_QUORUM_VOTERS
+          value: "1@kafka-svc.default.svc.cluster.local:9093"
+            # this port is which we define in KAFKA_LISTENERS for CONTROLLER
+        - name: KAFKA_INTER_BROKER_LISTENER_NAME
+          value: "PLAINTEXT"
+
+        # Consumer group behavior
+        - name: KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS
+          value: "0"
+
+        # Misc
+        - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
+          value: "true"
+        - name: KAFKA_LOG_DIRS
+          value: "/tmp/kraft-combined-logs"
+        - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+          value: "1"
+        - name: KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR
+          value: "1"
+        - name: KAFKA_TRANSACTION_STATE_LOG_MIN_ISR
+          value: "1"

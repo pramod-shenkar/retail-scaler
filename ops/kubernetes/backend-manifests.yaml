@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-producer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend-producer
+  template:
+    metadata:
+      labels:
+        app: backend-producer
+    spec:
+      containers:
+      - name: backend-producer
+        image: backend:latest
+        imagePullPolicy: Never
+        command: ["/bin/sh"]
+        args: ["-c", "cd backend/producer && go run main.go"]
+        # args: ["-c", "sleep infinity"]
+        ports:
+        - containerPort: 8080
+        env:
+        # Kafka broker & topic
+        - name: BROKER
+          value: "kafka-svc.default.svc.cluster.local:9092"  # In-cluster broker
+        - name: TOPIC_NAME
+          value: "Indent"   # Example topic name
+        - name: GROUP_ID
+          value: "retail"   # Example group id
+# ---
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: backend
+# spec:
+#   selector:
+#     app: backend
+#   ports:
+#   - port: 8080
+#     targetPort: 8080
+#   type: ClusterIP

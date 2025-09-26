@@ -1,0 +1,40 @@
+version: '3'
+tasks:
+
+  infra:
+    dir: "./ops"
+    cmds:
+    - docker compose down -v || true
+    - docker compose up -d
+
+  cluster:
+  - kind delete cluster || true
+  - kind create cluster
+
+  load:
+    dir: "./backend"
+    cmds:
+    - docker build --no-cache -t backend:latest .
+    # - docker exec -it retail-cluster-control-plane crictl rmi backend:latest || true
+    # - kind load docker-image backend:latest
+    # - docker pull confluentinc/cp-kafka:latest
+    # - kind load docker-image confluentinc/cp-kafka:latest
+    # - kind load docker-image bitnami/kafka:3.5.1
+    # - docker pull provectuslabs/kafka-ui:latest
+    # - kind load docker-image provectuslabs/kafka-ui:latest
+
+  apply:
+    cmds:
+    - docker build --no-cache -t backend:latest  -f "./backend/Dockerfile" .
+    # - docker run --rm backend:latest sleep infinity # go run /app/backend/producer/main.go
+    - kubectl delete all --all -n default
+    - kubectl apply -f "./ops/kubernetes/kafka-manifests.yaml"
+    - kubectl apply -f "./ops/kubernetes/backend-manifests.yaml"
+    - kubectl port-forward svc/kafka-svc 9092:9092 &
+    - sleep 5
+    - kubectl logs -l app=backend -f
+  operator:
+    dir: "./operator"
+    cmds:
+      # - kubebuilder init --domain=vajra.com
+
