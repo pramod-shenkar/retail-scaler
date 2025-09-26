@@ -28,3 +28,8 @@ internal/controller
 config/crd
 |- kustomization.yanl -- this include path of actual crd.yaml  [but we havent crd.yaml yet. we will create it in next steps]
 
+- update org_types.go as per need for crd object
+- run following command
+    - task generate :  update zz_generated.deepcopy.go     as per we updated code in org_types.go
+    - task manifests : create crd file in config/crd/bases as per we updated code in org_types.go 
+                       update config/rbac/role.yaml why? controller need to create crds & update status so we need to add API & permission for such ACTION  
