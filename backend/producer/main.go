@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log/slog"
 	"os"
@@ -28,8 +27,6 @@ func main() {
 	}
 
 	slog.Info("envs", "BROKER", viper.GetString("BROKER"), "TOPIC_NAME", viper.GetString("TOPIC_NAME"))
-
-	create_topic(viper.GetString("TOPIC_NAME"))
 
 	producer(viper.GetString("TOPIC_NAME"))
 }
@@ -84,53 +81,4 @@ func producer(topic string) {
 
 	slog.Info("flushing remaining messages...")
 	p.Flush(15 * 1000)
-}
-
-func create_topic(topic string) {
-
-	adminClient, err := kafka.NewAdminClient(&kafka.ConfigMap{"bootstrap.servers": viper.GetString("BROKER")})
-	if err != nil {
-		fmt.Printf("Failed to create Admin client: %s\n", err)
-		return
-	}
-	defer adminClient.Close()
-
-	// Define topic specification
-	topicSpec := kafka.TopicSpecification{
-		Topic:             topic,
-		NumPartitions:     10,
-		ReplicationFactor: 1,
-		// You can add more configurations here, e.g., "cleanup.policy": "compact"
-		Config: map[string]string{
-			"retention.ms": "604800000", // 7 days retention
-		},
-	}
-
-	// Create a context with a timeout for the operation
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	_, err = adminClient.DeleteTopics(ctx, []string{topic}, kafka.SetAdminOperationTimeout(5*time.Second))
-	if err != nil {
-		fmt.Printf("Failed to delete topic %s: %s\n", topic, err)
-		return
-	}
-
-	// Create the topic
-	results, err := adminClient.CreateTopics(ctx, []kafka.TopicSpecification{topicSpec})
-	if err != nil {
-		fmt.Printf("Failed to create topic '%s': %s\n", topic, err)
-		return
-	}
-
-	// Process the results
-	for _, result := range results {
-		if result.Error.Code() != kafka.ErrNoError && result.Error.Code() != kafka.ErrTopicAlreadyExists {
-			fmt.Printf("Topic creation failed for '%s': %s\n", result.Topic, result.Error)
-		} else if result.Error.Code() == kafka.ErrTopicAlreadyExists {
-			fmt.Printf("Topic '%s' already exists.\n", result.Topic)
-		} else {
-			fmt.Printf("Topic '%s' created successfully.\n", result.Topic)
-		}
-	}
 }

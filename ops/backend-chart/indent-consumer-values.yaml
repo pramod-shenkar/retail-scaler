@@ -1,0 +1,4 @@
+mode: consumer
+kafka:
+  topicName: "indent"
+  groupId: "retail"

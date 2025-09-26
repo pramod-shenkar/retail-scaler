@@ -1,0 +1,4 @@
+mode: producer
+kafka:
+  topicName: "indent"
+  groupId: "retail"

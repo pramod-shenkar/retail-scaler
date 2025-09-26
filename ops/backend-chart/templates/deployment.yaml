@@ -1,31 +1,29 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: backend-producer
+ name: {{.Values.kafka.topicName}}-{{ .Values.mode }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: backend-producer
+      app: {{.Values.kafka.topicName}}-{{ .Values.mode }}
   template:
     metadata:
       labels:
-        app: backend-producer
+        app: {{.Values.kafka.topicName}}-{{ .Values.mode }}
     spec:
       containers:
-      - name: backend-producer
+      - name: {{.Values.kafka.topicName}}-{{ .Values.mode }}
         image: backend:latest
         imagePullPolicy: Never
         command: ["/bin/sh"]
-        # args: ["-c", "cd backend/producer && go run main.go"]
-        args: ["-c", "cd backend/consumer && go run main.go"]
+        args: ["-c", "cd backend/{{ .Values.mode }} && go run main.go"]
         ports:
         - containerPort: 8080
         env:
-        # Kafka broker & topic
         - name: BROKER
           value: "kafka-svc.default.svc.cluster.local:9092"  # In-cluster broker
         - name: TOPIC_NAME
-          value: "Indent"   # Example topic name
+          value: {{.Values.kafka.topicName}}
         - name: GROUP_ID
-          value: "retail"   # Example group id
+          value: {{.Values.kafka.groupId}}

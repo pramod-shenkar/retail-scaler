@@ -33,6 +33,27 @@ tasks:
     # - kubectl port-forward svc/kafka-svc 9094:9094 &
     - sleep 5
     - kubectl logs -l app=backend-producer -f
+
+  helm:
+    dir: "./ops"
+    cmds:
+    # - helm lint kafka-chart
+    # - helm lint backend-chart
+    
+    # - docker build --no-cache -t backend:latest  -f "../backend/Dockerfile" .
+   
+    - helm uninstall kafka-release || true
+    - helm upgrade --install kafka-release kafka-chart 
+
+    - helm uninstall indent-producer-release || true
+    - helm upgrade --install indent-producer-release backend-chart -f ./backend-chart/indent-producer-values.yaml
+   
+    - helm uninstall indent-consumer-release || true
+    - helm upgrade --install indent-consumer-release backend-chart -f ./backend-chart/indent-consumer-values.yaml
+
+  clean:
+    - helm delete $(helm list -aq) || true
+    - kubectl delete all --all -n default
   operator:
     dir: "./operator"
     cmds:
