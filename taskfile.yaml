@@ -58,4 +58,7 @@ tasks:
     dir: "./operator"
     cmds:
       # - kubebuilder init --domain=vajra.com
+      # - kubebuilder create api --group core --version v1 --kind Org
+
+
 

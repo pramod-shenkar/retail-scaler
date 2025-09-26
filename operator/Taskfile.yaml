@@ -1,0 +1,99 @@
+version: '3'
+
+vars:
+  IMG: controller:latest
+  CONTAINER_TOOL: docker
+  PLATFORMS: linux/arm64,linux/amd64,linux/s390x,linux/ppc64le
+  ignore_not_found: false
+
+tasks:
+  # Core
+  all:
+    desc: Build (matches Makefile all target)
+    deps: [build]
+
+  # Manifests & Generation
+  manifests:
+    desc: Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects
+    cmds:
+      - controller-gen rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+
+  generate:
+    desc: Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations
+    cmds:
+      - controller-gen object:headerFile="hack/boilerplate.go.txt" paths="./..."
+
+  # Build
+  build:
+    desc: Build manager binary
+    deps: [manifests, generate]
+    cmds:
+      - go build -o bin/manager cmd/main.go
+
+  run:
+    desc: Run a controller from your host
+    deps: [manifests, generate]
+    cmds:
+      - go run ./cmd/main.go
+
+  # Docker
+  docker-build:
+    desc: Build docker image with the manager
+    cmds:
+      - '{{.CONTAINER_TOOL}} build -t {{.IMG}} .'
+
+  docker-push:
+    desc: Push docker image with the manager
+    cmds:
+      - '{{.CONTAINER_TOOL}} push {{.IMG}}'
+
+  docker-buildx:
+    desc: Build and push for multiple platforms
+    cmds:
+      - sed -e '1 s/\(^FROM\)/FROM --platform=\$\{BUILDPLATFORM\}/; t' -e ' 1,// s//FROM --platform=\$\{BUILDPLATFORM\}/' Dockerfile > Dockerfile.cross
+      - '{{.CONTAINER_TOOL}} buildx create --name operator-builder || true'
+      - '{{.CONTAINER_TOOL}} buildx use operator-builder'
+      - '{{.CONTAINER_TOOL}} buildx build --push --platform={{.PLATFORMS}} --tag {{.IMG}} -f Dockerfile.cross .'
+      - '{{.CONTAINER_TOOL}} buildx rm operator-builder || true'
+      - rm Dockerfile.cross
+
+  # Installer
+  build-installer:
+    desc: Build installer manifest
+    deps: [manifests, generate]
+    cmds:
+      - mkdir -p dist
+      - cd config/manager && kustomize edit set image controller={{.IMG}}
+      - kustomize build config/default > dist/install.yaml
+
+  # Deployment
+  install:
+    desc: Install CRDs into the K8s cluster
+    deps: [manifests]
+    cmds:
+      - |
+        out="$(kustomize build config/crd 2>/dev/null || true)"
+        if [ -n "$out" ]; then 
+          echo "$out" | kubectl apply -f -
+        else 
+          echo "No CRDs to install; skipping."
+        fi
+
+  uninstall:
+    desc: Uninstall CRDs from the K8s cluster  
+    deps: [manifests]
+    cmds:
+      - |
+        out="$(kustomize build config/crd 2>/dev/null || true)"
+        if [ -n "$out" ]; then 
+          echo "$out" | kubectl delete --ignore-not-found={{.ignore_not_found}} -f -
+        else 
+          echo "No CRDs to delete; skipping."
+        fi
+
+  deploy:
+    desc: Deploy controller to the K8s cluster
+    deps: [manifests]
+    cmds:
+      - cd config/manager && kustomize edit set image controller={{.IMG}}
+      - kustomize build config/default | kubectl apply -f -
