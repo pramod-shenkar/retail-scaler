@@ -8,7 +8,7 @@
         "program": "${workspaceFolder}/backend/consumer/main.go",
     
         "env": {
-            "BROKER": "localhost:9000",
+            "BROKER": "localhost:9094",
             "TOPIC_NAME": "Indent",
             "GROUP_ID":"sample-group"
         }
@@ -21,7 +21,7 @@
         "program": "${workspaceFolder}/backend/producer/main.go",
     
         "env": {
-            "BROKER": "localhost:9000",
+            "BROKER": "localhost:9094",
             "TOPIC_NAME": "Indent",
             "GROUP_ID":"sample-group"
         }

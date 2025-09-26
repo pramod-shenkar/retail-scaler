@@ -30,9 +30,9 @@ tasks:
     - kubectl delete all --all -n default
     - kubectl apply -f "./ops/kubernetes/kafka-manifests.yaml"
     - kubectl apply -f "./ops/kubernetes/backend-manifests.yaml"
-    - kubectl port-forward svc/kafka-svc 9092:9092 &
+    # - kubectl port-forward svc/kafka-svc 9094:9094 &
     - sleep 5
-    - kubectl logs -l app=backend -f
+    - kubectl logs -l app=backend-producer -f
   operator:
     dir: "./operator"
     cmds:

@@ -65,7 +65,7 @@ func consumer(topic string) {
 			}
 			// Log other errors but continue
 			slog.Warn("error reading message", "error", err)
-			continue
+			return
 		}
 
 		slog.Info("consumed",

@@ -11,6 +11,9 @@ spec:
     - name: controller
       port: 9093
       targetPort: 9093
+    - name: external
+      port: 9094
+      targetPort: 9094
   selector:
     app: kafka-app
 ---
@@ -34,6 +37,7 @@ spec:
         ports:
         - containerPort: 9092   # PLAINTEXT listener
         - containerPort: 9093   # CONTROLLER listener
+        - containerPort: 9094   # EXTERNAL listener
         env:
         # Broker identity & cluster config
         - name: KAFKA_BROKER_ID
@@ -45,16 +49,17 @@ spec:
 
         # Listeners & networking
         - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
-          value: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT"
+          value: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT"
             # Maps logical listener names (PLAINTEXT, CONTROLLER) to security protocols.
             # PLAINTEXT → unencrypted, for broker<->broker and/or internal traffic.
             # CONTROLLER → special listener used by the controller quorum in KRaft.
+            # EXTERNAL → for external/host application traffic
             # Now value can be : PLAINTEXT, SSL, SASL_PLAINTEXT, SASL_SSL
             # quorum = group of controller nodes i.e., that manages metadata
         - name: KAFKA_ADVERTISED_LISTENERS
-          value: "PLAINTEXT://kafka-svc.default.svc.cluster.local:9092"
+          value: "PLAINTEXT://kafka-svc.default.svc.cluster.local:9092,EXTERNAL://localhost:9094"
         - name: KAFKA_LISTENERS
-          value: "PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093"
+          value: "PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093,EXTERNAL://0.0.0.0:9094,"
 
         # Broker & quorum
         - name: KAFKA_PROCESS_ROLES
