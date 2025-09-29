@@ -22,10 +22,7 @@ func main() {
 	))
 	viper.AutomaticEnv()
 
-	for i := range 4 {
-		time.Sleep(3 * time.Second)
-		slog.Info("starting in ", "sec", 12-4*i)
-	}
+	slog.Info("starting consumer for", "topic", viper.GetString("TOPIC_NAME"), "groupId", viper.GetString("GROUP_ID"), "broker", viper.GetString("BROKER"))
 
 	create_topic(viper.GetString("TOPIC_NAME"))
 

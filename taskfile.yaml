@@ -54,11 +54,34 @@ tasks:
   clean:
     - helm delete $(helm list -aq) || true
     - kubectl delete all --all -n default
+    - kubectl delete all --all -n consumer
+
+  play:
+    - docker build --no-cache -t backend:latest  -f "./backend/Dockerfile" .
+    - cd "./operator" && task generate
+    - cd "./operator" && task manifests
+    - task crd
+    - task create
+
   operator:
     dir: "./operator"
     cmds:
       # - kubebuilder init --domain=vajra.com
       # - kubebuilder create api --group core --version v1 --kind Org
+
+  crd:
+    dir: "./operator"
+    cmds:
+      - task generate
+      - task manifests
+      - kubectl delete crd orgs.core.vajra.com || true
+      - kubectl apply -f ./config/crd/bases/core.vajra.com_orgs.yaml
+
+  create:
+    dir: "./operator"
+    cmds:
+      - kubectl delete all --all -n queue
+      - kubectl apply -f ./config/samples/core_v1_org.yaml
 
 
 

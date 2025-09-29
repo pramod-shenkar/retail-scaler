@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
@@ -70,7 +70,7 @@ func (r CustomReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	}
 
 	if *mydeployment.Spec.Replicas < 4 {
-		mydeployment.Spec.Replicas = pointer.Int32(4)
+		mydeployment.Spec.Replicas = ptr.To(int32(4))
 		err = r.Update(ctx, &mydeployment)
 		if err != nil {
 			slog.ErrorContext(ctx, "error while", "err", err.Error())
@@ -86,5 +86,8 @@ func (r CustomReconciler) SetupWithManager(manager ctrl.Manager) error {
 		For(&appsv1.Deployment{}).
 		Owns(&corev1.Service{}).
 		Watches(&corev1.Secret{}, &handler.EnqueueRequestForObject{}).
+		// WithOptions(controller.Options{
+		// 	MaxConcurrentReconciles: 10, // Run 10 reconciles in parallel
+		// }).
 		Complete(r)
 }

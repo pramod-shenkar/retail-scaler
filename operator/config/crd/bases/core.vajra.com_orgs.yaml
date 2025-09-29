@@ -39,8 +39,61 @@ spec:
           spec:
             description: spec defines the desired state of Org
             properties:
-              IndentConsumerCount:
-                type: integer
+              consumers:
+                properties:
+                  groupId:
+                    type: string
+                  namespace:
+                    type: string
+                  topics:
+                    items:
+                      type: string
+                    type: array
+                required:
+                - groupId
+                - namespace
+                - topics
+                type: object
+              orgName:
+                type: string
+              queue:
+                properties:
+                  clusterId:
+                    type: string
+                  name:
+                    type: string
+                  namespace:
+                    type: string
+                  ports:
+                    properties:
+                      controller:
+                        format: int32
+                        type: integer
+                      external:
+                        format: int32
+                        type: integer
+                      plaintext:
+                        format: int32
+                        type: integer
+                    required:
+                    - controller
+                    - external
+                    - plaintext
+                    type: object
+                  replicas:
+                    format: int32
+                    type: integer
+                required:
+                - clusterId
+                - name
+                - namespace
+                - ports
+                - replicas
+                type: object
+            required:
+            - consumers
+            - orgName
+            - queue
             type: object
           status:
             description: status defines the observed state of Org

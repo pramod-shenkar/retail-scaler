@@ -22,7 +22,29 @@ import (
 
 // OrgSpec defines the desired state of Org
 type OrgSpec struct {
-	IndentConsumerCount int `json:"IndentConsumerCount,omitempty"`
+	OrgName   string    `json:"orgName"`
+	Queue     Queue     `json:"queue"`
+	Consumers Consumers `json:"consumers"`
+}
+
+type Queue struct {
+	Name      string     `json:"name"`
+	Namespace string     `json:"namespace"`
+	ClusterId string     `json:"clusterId"`
+	Replicas  *int32     `json:"replicas"`
+	Ports     QueuePorts `json:"ports"`
+}
+
+type QueuePorts struct {
+	Plaintext  int32 `json:"plaintext"`
+	Controller int32 `json:"controller"`
+	External   int32 `json:"external"`
+}
+
+type Consumers struct {
+	Namespace string   `json:"namespace"`
+	GroupId   string   `json:"groupId"`
+	Topics    []string `json:"topics"`
 }
 
 // OrgStatus defines the observed state of Org.

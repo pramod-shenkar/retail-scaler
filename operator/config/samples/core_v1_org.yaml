@@ -4,6 +4,23 @@ metadata:
   labels:
     app.kubernetes.io/name: operator
     app.kubernetes.io/managed-by: kustomize
-  name: org-sample
+  name: rbi
 spec:
-  # TODO(user): Add fields here
+  orgName: "rbi"
+  queue:  
+    name: "queue"
+    namespace: "default"
+    clusterId: "MkU3OEVBNTcwNTJENDM2Qk"
+    replicas: 1
+    ports:
+      plaintext: 9092
+      controller: 9093
+      external: 9094
+  consumers:
+    namespace: "default"
+    groupId: "retail"
+    topics:
+      - indent
+      - issuance
+      - redeem
+      - transfer
