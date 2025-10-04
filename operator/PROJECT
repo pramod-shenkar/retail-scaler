@@ -18,4 +18,8 @@ resources:
   kind: Org
   path: retail-scalar/api/v1
   version: v1
+- controller: true
+  domain: vajra.com
+  kind: Scalar
+  version: v1
 version: "3"

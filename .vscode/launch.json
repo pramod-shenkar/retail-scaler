@@ -17,8 +17,8 @@
     
         "env": {
             "BROKER": "localhost:9094",
-            "TOPIC_NAME": "Indent",
-            "GROUP_ID":"sample-group"
+            "TOPIC_NAME": "indent",
+            "GROUP_ID":"retail"
         }
     },
     {
@@ -30,8 +30,8 @@
     
         "env": {
             "BROKER": "localhost:9094",
-            "TOPIC_NAME": "Indent",
-            "GROUP_ID":"sample-group"
+            "TOPIC_NAME": "indent",
+            "GROUP_ID":"retail"
         }
     }
     ]

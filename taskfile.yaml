@@ -30,7 +30,7 @@ tasks:
     - kubectl delete all --all -n default
     - kubectl apply -f "./ops/kubernetes/kafka-manifests.yaml"
     - kubectl apply -f "./ops/kubernetes/backend-manifests.yaml"
-    # - kubectl port-forward svc/kafka-svc 9094:9094 &
+    # - kubectl port-forward svc/queue 9094:9094 &
     - sleep 5
     - kubectl logs -l app=backend-producer -f
 
@@ -68,7 +68,8 @@ tasks:
     cmds:
       # - kubebuilder init --domain=vajra.com
       # - kubebuilder create api --group core --version v1 --kind Org
-
+      # - kubebuilder create api --resource=false --controller=true --version v1 --kind Scalar # TODO Check other options
+      -  kubebuilder create webhook --group core --version v1 --kind Org --defaulting --programmatic-validation --conversion
   crd:
     dir: "./operator"
     cmds:
@@ -83,5 +84,5 @@ tasks:
       - kubectl delete all --all -n queue
       - kubectl apply -f ./config/samples/core_v1_org.yaml
 
-
-
+  lag:
+    - kubectl exec -it $(kubectl get pod -l app=queue -o jsonpath='{.items[0].metadata.name}') -- watch -n 2 "kafka-consumer-groups --bootstrap-server queue:9092 --group retail --describe"

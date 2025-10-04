@@ -47,13 +47,31 @@ spec:
                     type: string
                   topics:
                     items:
-                      type: string
+                      properties:
+                        maxLag:
+                          type: integer
+                        name:
+                          type: string
+                        partitionCount:
+                          type: integer
+                      required:
+                      - maxLag
+                      - name
+                      - partitionCount
+                      type: object
                     type: array
                 required:
                 - groupId
                 - namespace
                 - topics
                 type: object
+              lagCheckerDelay:
+                description: |-
+                  A Duration represents the elapsed time between two instants
+                  as an int64 nanosecond count. The representation limits the
+                  largest representable duration to approximately 290 years.
+                format: int64
+                type: integer
               orgName:
                 type: string
               queue:
@@ -92,6 +110,7 @@ spec:
                 type: object
             required:
             - consumers
+            - lagCheckerDelay
             - orgName
             - queue
             type: object

@@ -30,3 +30,29 @@ rules:
   - get
   - patch
   - update
+- apiGroups:
+  - vajra.com
+  resources:
+  - scalars
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - vajra.com
+  resources:
+  - scalars/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - vajra.com
+  resources:
+  - scalars/status
+  verbs:
+  - get
+  - patch
+  - update

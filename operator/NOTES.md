@@ -77,3 +77,47 @@ Scheme:
 
 So always create new empty scheme, call AddToScheme(scheme) which will register all k8s buildin resource in that scheme & now use this scheme as arg to manager. 
 Now how to register CR in schema??  -> our CR should have its own AddToScheme() which we will call after registering buildin resources.
+
+
+Finerlizer:
+-  Its tag that tell delete crd only when recon-loop's delete checkup done which will clear other 2ndary resources
+- We doesnt need to add it in yaml. It will be added by recon loop
+- We MUST delete finerlizer once we cleaned 2ndary resources in our recon loop. ITS MANDETORY ELSE LOOP WILL RUN AGAIN. So delete it & AGAIN UPDATE CR
+- Add finalizer if its missing
+- functions used ( from package : "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil")
+    - ContainsFinalizer
+    - RemoveFinalizer
+    - AddFinalizer
+
+WebHooks: 
+- http callbacks that k8s api-server will call before saving resources to ETCD db 
+- Types:
+    1. validating:  Validate cr yaml correct or not ie required field exist or not
+    2. mutating  :  modify/set default values in cr eg: inject lables
+    3. conversion:  convert between api versions eg v1Alpha => v1Beta
+
+
+
+1. Validating:
+    - Our CR MUST implemnt Validator interface. ie MUST contain following methods
+            ValidateCreate() error
+            ValidateUpdate(old runtime.Object) error
+            ValidateDelete() error
+
+2. Mutating:
+    - our CR MUST implement Defaulter interface with methods:
+            Default()
+
+3. Conversion:
+    - our CR MUST implement Convertible interface with methods:
+            ConvertTo(dst Hub) error
+            ConvertFrom(src Hub) error
+        where Hub is interface with method Hub()
+
+
+- Following command will create needed code for webhooks
+- // +kubebuilder:webhook:path=/mutate-mygroup-v1-organization,mutating=true,failurePolicy=fail,groups=mygroup.example.com,resources=organizations,verbs=create;update,versions=v1,name=morganization.kb.io
+
+
+
+ TODO: what is patch & merge statergy ie type

@@ -17,14 +17,17 @@ limitations under the License.
 package v1
 
 import (
+	"time"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // OrgSpec defines the desired state of Org
 type OrgSpec struct {
-	OrgName   string    `json:"orgName"`
-	Queue     Queue     `json:"queue"`
-	Consumers Consumers `json:"consumers"`
+	OrgName         string        `json:"orgName"`
+	Queue           Queue         `json:"queue"`
+	Consumers       Consumers     `json:"consumers"`
+	LagCheckerDelay time.Duration `json:"lagCheckerDelay"`
 }
 
 type Queue struct {
@@ -42,9 +45,15 @@ type QueuePorts struct {
 }
 
 type Consumers struct {
-	Namespace string   `json:"namespace"`
-	GroupId   string   `json:"groupId"`
-	Topics    []string `json:"topics"`
+	Namespace string  `json:"namespace"`
+	GroupId   string  `json:"groupId"`
+	Topics    []Topic `json:"topics"`
+}
+
+type Topic struct {
+	Name           string `json:"name"`
+	PartitionCount int    `json:"partitionCount"`
+	MaxLag         int    `json:"maxLag"`
 }
 
 // OrgStatus defines the observed state of Org.

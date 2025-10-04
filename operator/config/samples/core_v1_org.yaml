@@ -20,7 +20,7 @@ spec:
     namespace: "default"
     groupId: "retail"
     topics:
-      - indent
-      - issuance
-      - redeem
-      - transfer
+    - name: "indent"
+      partitionCount: 3
+      maxLag: 10
+  lagCheckerDelay: 30

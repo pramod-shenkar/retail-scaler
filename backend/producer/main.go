@@ -21,11 +21,6 @@ func main() {
 	))
 	viper.AutomaticEnv()
 
-	for i := range 4 {
-		time.Sleep(3 * time.Second)
-		slog.Info("starting in ", "sec", 12-4*i)
-	}
-
 	slog.Info("envs", "BROKER", viper.GetString("BROKER"), "TOPIC_NAME", viper.GetString("TOPIC_NAME"))
 
 	producer(viper.GetString("TOPIC_NAME"))
@@ -38,6 +33,7 @@ func producer(topic string) {
 		"acks":                "all",
 		"retries":             3,
 		"delivery.timeout.ms": 10000,
+		"go.delivery.reports": false,
 	})
 	if err != nil {
 		slog.Error("producer create failed", "error", err)
@@ -48,7 +44,7 @@ func producer(topic string) {
 	// Create delivery report channel
 	deliveryChan := make(chan kafka.Event)
 
-	for i := range 10 {
+	for i := range 10000 {
 		message := &kafka.Message{
 			TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
 			Value:          []byte(fmt.Sprintf("%v %v", topic, i)),
@@ -64,17 +60,16 @@ func producer(topic string) {
 		// slog.Info("message sent", "topic", topic, "index", i)
 
 		// Wait for delivery report
-		e := <-deliveryChan
-		m := e.(*kafka.Message)
-		if m.TopicPartition.Error != nil {
-			slog.Error("delivery failed", "error", m.TopicPartition.Error)
-			return
-		} else {
-			slog.Info("delivered",
-				"topic", *m.TopicPartition.Topic,
-				"partition", m.TopicPartition.Partition,
-				"offset", m.TopicPartition.Offset)
-		}
+		go func() {
+			e := <-deliveryChan
+			m := e.(*kafka.Message)
+			if m.TopicPartition.Error != nil {
+				slog.Error("delivery failed", "error", m.TopicPartition.Error)
+				return
+			} else {
+				slog.Info("delivered", "topic", *m.TopicPartition.Topic, "partition", m.TopicPartition.Partition, "offset", m.TopicPartition.Offset)
+			}
+		}()
 
 		time.Sleep(1 * time.Second)
 	}

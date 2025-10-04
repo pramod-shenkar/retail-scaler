@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -31,6 +32,7 @@ import (
 	ctr "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	cli "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	crdv1 "retail-scalar/api/v1"
 
@@ -230,11 +232,61 @@ func (r *OrgReconciler) Reconcile(ctx context.Context, req ctr.Request) (ctr.Res
 
 func (r *OrgReconciler) Reconcile(ctx context.Context, req ctr.Request) (ctr.Result, error) {
 
+	var finarlizer = "core.vajra.com/finarlizer"
+
 	var org crdv1.Org
 	err := r.Get(ctx, req.NamespacedName, &org)
 	if err != nil {
 		slog.ErrorContext(ctx, "errro while getting org", "err", err)
 		return ctr.Result{}, err
+	}
+
+	if org.DeletionTimestamp != nil {
+		if controllerutil.ContainsFinalizer(&org, finarlizer) {
+
+			// r.DeleteAllOf() //TODO: what is DeleteAllOf
+
+			for _, topic := range org.Spec.Consumers.Topics {
+				err := r.DeleteIfExists(ctx, &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: topic.Name, Namespace: org.Spec.Consumers.Namespace}})
+				if err != nil {
+					slog.ErrorContext(ctx, "error while deleteing consumer deployment for topic "+topic.Name, err)
+					return ctr.Result{}, err
+				}
+			}
+
+			err := r.Delete(ctx, &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "queue", Namespace: org.Spec.Queue.Namespace}})
+			if err != nil {
+				slog.ErrorContext(ctx, "error while queue deployment", err)
+				return ctr.Result{}, err
+			}
+
+			err = r.Delete(ctx, &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: org.Spec.Queue.Name, Namespace: org.Spec.Queue.Namespace, Labels: map[string]string{"app": "queue"}}})
+			if err != nil {
+				slog.ErrorContext(ctx, "error while deleteing queue service")
+				return ctr.Result{}, err
+			}
+
+			controllerutil.RemoveFinalizer(&org, finarlizer)
+			err = r.Update(ctx, &org)
+			if err != nil {
+				slog.ErrorContext(ctx, "error while updaing org after removing finalizer", "err", err)
+				return ctr.Result{}, err
+			}
+
+			// MUST RETRURN FROM HERE AS RESOURCE IS DELETED
+			return ctr.Result{}, nil
+		}
+	}
+
+	if !controllerutil.ContainsFinalizer(&org, finarlizer) {
+		controllerutil.AddFinalizer(&org, finarlizer)
+		err = r.Update(ctx, &org)
+		if err != nil {
+			slog.ErrorContext(ctx, "error while updaing org after adding finalizer", "err", err)
+			return ctr.Result{}, err
+		}
+		// EXIT FROM HERE AS UPDATE WILL RECONCILE AGAIN
+		return ctr.Result{}, nil
 	}
 
 	var queueNs = corev1.Namespace{
@@ -302,10 +354,10 @@ func (r *OrgReconciler) Reconcile(ctx context.Context, req ctr.Request) (ctr.Res
 
 	for _, topic := range topics {
 
-		var consumerKey = types.NamespacedName{Name: topic, Namespace: org.Spec.Consumers.Namespace}
+		var consumerKey = types.NamespacedName{Name: topic.Name, Namespace: org.Spec.Consumers.Namespace}
 		err = r.CreateIfNotExist(ctx, consumerKey, ConsumerDeployment(org, topic))
 		if err != nil {
-			slog.ErrorContext(ctx, "error while CreateIfNotExist consumer-"+topic, "err", err)
+			slog.ErrorContext(ctx, "error while CreateIfNotExist consumer-"+topic.Name, "err", err)
 			return ctr.Result{}, err
 		}
 	}
@@ -317,9 +369,9 @@ func (r *OrgReconciler) Reconcile(ctx context.Context, req ctr.Request) (ctr.Res
 			time.Sleep(time.Second * 2)
 
 			var deployment appsv1.Deployment
-			err = r.Get(ctx, types.NamespacedName{Name: topics[piece], Namespace: org.Spec.Consumers.Namespace}, &deployment)
+			err = r.Get(ctx, types.NamespacedName{Name: topics[piece].Name, Namespace: org.Spec.Consumers.Namespace}, &deployment)
 			if err != nil {
-				slog.ErrorContext(ctx, "error while getting deployment "+topics[piece], "err", err)
+				slog.ErrorContext(ctx, "error while getting deployment "+topics[piece].Name, "err", err)
 				continue
 			}
 
@@ -330,7 +382,7 @@ func (r *OrgReconciler) Reconcile(ctx context.Context, req ctr.Request) (ctr.Res
 		}
 
 		if !isSuccess {
-			slog.ErrorContext(ctx, "retry exaused while getting consumer-"+topics[piece])
+			slog.ErrorContext(ctx, "retry exaused while getting consumer-"+topics[piece].Name)
 			return ctr.Result{}, err
 		}
 	}
@@ -357,6 +409,14 @@ func (r *OrgReconciler) CreateIfNotExist(ctx context.Context, key client.ObjectK
 		}
 	}
 
+	return nil
+}
+
+func (r *OrgReconciler) DeleteIfExists(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
+	err := r.Delete(ctx, obj, opts...)
+	if err != nil && errors.IsNotFound(err) {
+		return err
+	}
 	return nil
 }
 
@@ -428,6 +488,7 @@ func QueueDeployment(org crdv1.Org) *appsv1.Deployment {
 
 							// Misc
 							{Name: "KAFKA_AUTO_CREATE_TOPICS_ENABLE", Value: "true"},
+							{Name: "KAFKA_NUM_PARTITIONS", Value: "3"},
 							{Name: "KAFKA_LOG_DIRS", Value: "/tmp/kraft-combined-logs"},
 							{Name: "KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR", Value: fmt.Sprintf("%v", *org.Spec.Queue.Replicas)},
 							{Name: "KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR", Value: "1"},
@@ -441,19 +502,19 @@ func QueueDeployment(org crdv1.Org) *appsv1.Deployment {
 	}
 }
 
-func ConsumerDeployment(org crdv1.Org, topic string) *appsv1.Deployment {
+func ConsumerDeployment(org crdv1.Org, topic crdv1.Topic) *appsv1.Deployment {
 
-	labels := map[string]string{"consumer": topic}
+	labels := map[string]string{"consumer": topic.Name}
 	return &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{Name: topic, Namespace: org.Spec.Consumers.Namespace, Labels: labels},
+		ObjectMeta: metav1.ObjectMeta{Name: topic.Name, Namespace: org.Spec.Consumers.Namespace, Labels: labels},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: ptr.To(int32(1)),
 			Selector: &metav1.LabelSelector{MatchLabels: labels},
 			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{Name: topic, Namespace: org.Spec.Consumers.Namespace, Labels: labels},
+				ObjectMeta: metav1.ObjectMeta{Name: topic.Name, Namespace: org.Spec.Consumers.Namespace, Labels: labels},
 				Spec: corev1.PodSpec{Containers: []corev1.Container{
 					{
-						Name:            topic,
+						Name:            topic.Name,
 						Image:           "backend:latest",
 						ImagePullPolicy: "Never",
 						Env: []corev1.EnvVar{
@@ -461,8 +522,9 @@ func ConsumerDeployment(org crdv1.Org, topic string) *appsv1.Deployment {
 								"%v.%v.svc.cluster.local:%v",
 								org.Spec.Queue.Name, org.Spec.Queue.Namespace, org.Spec.Queue.Ports.Plaintext,
 							)},
-							{Name: "TOPIC_NAME", Value: topic},
+							{Name: "TOPIC_NAME", Value: topic.Name},
 							{Name: "GROUP_ID", Value: org.Spec.Consumers.GroupId},
+							{Name: "PARTITION_COUNT", Value: strconv.Itoa(topic.PartitionCount)},
 						},
 						Args: []string{"sh", "-c", "cd backend/consumer && go run main.go"},
 					},

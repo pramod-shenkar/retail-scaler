@@ -24,7 +24,7 @@ func main() {
 
 	slog.Info("starting consumer for", "topic", viper.GetString("TOPIC_NAME"), "groupId", viper.GetString("GROUP_ID"), "broker", viper.GetString("BROKER"))
 
-	create_topic(viper.GetString("TOPIC_NAME"))
+	create_topic(viper.GetString("TOPIC_NAME"), viper.GetInt("PARTITION_COUNT"))
 
 	consumer(viper.GetString("TOPIC_NAME"))
 }
@@ -69,15 +69,12 @@ func consumer(topic string) {
 			return
 		}
 
-		slog.Info("consumed",
-			"topic", *msg.TopicPartition.Topic,
-			"partition", msg.TopicPartition.Partition,
-			"offset", msg.TopicPartition.Offset,
-			"value", string(msg.Value))
+		slog.Info("consumed", "topic", *msg.TopicPartition.Topic, "partition", msg.TopicPartition.Partition, "offset", msg.TopicPartition.Offset, "value", string(msg.Value))
+		time.Sleep(time.Second * 2)
 	}
 }
 
-func create_topic(topic string) {
+func create_topic(topic string, partitions int) {
 
 	adminClient, err := kafka.NewAdminClient(&kafka.ConfigMap{"bootstrap.servers": viper.GetString("BROKER")})
 	if err != nil {
@@ -89,7 +86,7 @@ func create_topic(topic string) {
 	// Define topic specification
 	topicSpec := kafka.TopicSpecification{
 		Topic:             topic,
-		NumPartitions:     10,
+		NumPartitions:     partitions,
 		ReplicationFactor: 1,
 		// You can add more configurations here, e.g., "cleanup.policy": "compact"
 		Config: map[string]string{
